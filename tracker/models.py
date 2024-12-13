@@ -16,3 +16,6 @@ class Transaction(BaseModel):
     
     class Meta:
         ordering = ('description',)
+        
+    def isNegative(self):
+        return self.amount < 0
