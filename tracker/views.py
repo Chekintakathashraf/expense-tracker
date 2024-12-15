@@ -5,6 +5,7 @@ from django.db.models import Sum,Q
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate,login,logout
+from django.contrib.auth.decorators import login_required
 
 def registration(request):
     if request.method == "POST":
@@ -57,13 +58,13 @@ def login_page(request):
     
     return render(request, 'login.html')
         
-
+@login_required(login_url='/login/')
 def logout_page(request):
     logout(request)
     messages.success(request,"User logout")
     return redirect('/login/')
     
-
+@login_required(login_url='/login/')
 def index(request):
     if request.method == "POST":
         description = request.POST.get('description')
@@ -79,16 +80,17 @@ def index(request):
             messages.error(request, "Amount is not a valid number.")
             return redirect('/')
         
-        Transaction.objects.create(description=description,amount=amount)
+        Transaction.objects.create(description=description,amount=amount,created_by=request.user)
     messages.info(request,"")
     context = {
-        'trasactions':Transaction.objects.all(),
-        'balance':Transaction.objects.all().aggregate(balance=Sum('amount'))['balance'] or 0,
-        'income':Transaction.objects.filter(amount__gte=0).aggregate(income=Sum('amount'))['income'] or 0,
-        'expense':Transaction.objects.filter(amount__lte=0).aggregate(expense=Sum('amount'))['expense'] or 0,
+        'trasactions':Transaction.objects.all(created_by=request.user),
+        'balance':Transaction.objects.filter(created_by=request.user).aggregate(balance=Sum('amount'))['balance'] or 0,
+        'income':Transaction.objects.filter(created_by=request.user,amount__gte=0).aggregate(income=Sum('amount'))['income'] or 0,
+        'expense':Transaction.objects.filter(created_by=request.user,amount__lte=0).aggregate(expense=Sum('amount'))['expense'] or 0,
     }
     return render(request,'index.html',context)
 
+@login_required(login_url='/login/')
 def deleteTransaction(request, uuid):
     Transaction.objects.get(uuid=uuid).delete()
     return redirect('/')
