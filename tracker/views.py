@@ -1,8 +1,68 @@
-from django.shortcuts import render,redirect
+from django.shortcuts import render,redirect,HttpResponse
 from .models import Transaction
-from django.db.models import Sum
+from django.db.models import Sum,Q
 # Create your views here.
 from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate,login,logout
+
+def registration(request):
+    if request.method == "POST":
+        first_name = request.POST.get("first_name")
+        last_name = request.POST.get("last_name")
+        username = request.POST.get("username")
+        email = request.POST.get("email")
+        password = request.POST.get("password")
+        
+        user_obj = User.objects.filter(
+            Q(email=email) | Q(username=username)
+            )
+        
+        if user_obj.exists():
+            messages.error(request, "Username or email already exists")
+            return redirect("/registration/")
+        user_obj = User.objects.create(
+            first_name=first_name,
+            last_name=last_name,
+            username=username,
+            email=email,
+        )
+        user_obj.set_password(password)
+        user_obj.save()
+        messages.success(request,"User created")
+        return redirect('/registration/')
+        
+    return render(request, 'registration.html')
+
+def login_page(request):
+    if request.method == "POST":
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+        
+        user_obj = User.objects.filter(
+            username=username
+            )
+        
+        if not user_obj.exists():
+            messages.error(request, "User not exists, create user")
+            return redirect("/registration/")
+        
+        user_obj = authenticate(username=username,password=password)
+        if user_obj is None:  
+            messages.error(request, "Not a valid credential")
+            return redirect("/login/")
+        
+        login(request,user_obj)
+        return redirect("/")
+    
+    return render(request, 'login.html')
+        
+
+def logout_page(request):
+    logout(request)
+    messages.success(request,"User logout")
+    return redirect('/login/')
+    
 
 def index(request):
     if request.method == "POST":
